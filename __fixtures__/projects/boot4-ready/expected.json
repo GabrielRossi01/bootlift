@@ -1,0 +1,71 @@
+{
+  "name": "boot4-ready",
+  "build": "gradle-groovy",
+  "bootVersion": "4.0.0",
+  "javaVersion": "25",
+  "description": "Serviço de faturamento já migrado para o Spring Boot 4 (Gradle Groovy DSL). Nenhuma regra pode disparar aqui: cada armadilha imita um padrão do Boot 3.",
+  "expected": [],
+  "traps": [
+    {
+      "file": "build.gradle",
+      "line": 3,
+      "match": "id 'org.springframework.boot' version '4.0.0'",
+      "reason": "Boot 4 não deve gerar BOOT_VERSION"
+    },
+    {
+      "file": "gradle/wrapper/gradle-wrapper.properties",
+      "line": 3,
+      "match": "gradle-8.14.3-bin.zip",
+      "reason": "Gradle 8.14.3 atende o mínimo"
+    },
+    {
+      "file": "build.gradle",
+      "line": 21,
+      "match": "'org.springframework.boot:spring-boot-starter-webmvc'",
+      "reason": "webmvc é o nome novo; a regex de web não pode casar"
+    },
+    {
+      "file": "build.gradle",
+      "line": 22,
+      "match": "'org.springframework.boot:spring-boot-starter-aspectj'",
+      "reason": "aspectj é o nome novo do starter aop"
+    },
+    {
+      "file": "build.gradle",
+      "line": 24,
+      "match": "'org.springframework.boot:spring-boot-starter-webmvc-test'",
+      "reason": "starter de teste novo do Boot 4"
+    },
+    {
+      "file": "src/main/java/dev/rossi/billing/invoice/InvoiceSigner.java",
+      "line": 8,
+      "match": "import tools.jackson.databind.json.JsonMapper;",
+      "reason": "já é Jackson 3"
+    },
+    {
+      "file": "src/main/java/dev/rossi/billing/invoice/InvoiceSigner.java",
+      "line": 5,
+      "match": "import javax.crypto.Mac;",
+      "reason": "javax.crypto é do JDK"
+    },
+    {
+      "file": "src/main/java/dev/rossi/billing/invoice/Invoice.java",
+      "line": 3,
+      "match": "import com.fasterxml.jackson.annotation.JsonProperty;",
+      "reason": "jackson-annotations mantém o pacote antigo"
+    },
+    {
+      "file": "src/test/java/dev/rossi/billing/invoice/InvoiceControllerTest.java",
+      "line": 23,
+      "match": "    @MockitoBean",
+      "reason": "@MockitoBean não pode casar com @MockBean"
+    },
+    {
+      "file": "src/main/resources/application.yml",
+      "line": 7,
+      "match": "allow-trailing-comma: true",
+      "reason": "spring.jackson.json.read.* já é o nome novo"
+    }
+  ],
+  "notCovered": []
+}

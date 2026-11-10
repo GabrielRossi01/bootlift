@@ -1,0 +1,98 @@
+{
+  "name": "maven-boot3",
+  "build": "maven",
+  "bootVersion": "3.3.5",
+  "javaVersion": "17",
+  "description": "API de pedidos em Spring Boot 3.3 com Maven. Cobre versão do Boot, starter renomeado, Undertow, launch script, Jackson 2, @MockBean e propriedade renomeada.",
+  "expected": [
+    {
+      "ruleId": "BOOT_VERSION",
+      "file": "pom.xml",
+      "line": 9,
+      "match": "<artifactId>spring-boot-starter-parent</artifactId>"
+    },
+    {
+      "ruleId": "STARTER_RENAMED",
+      "file": "pom.xml",
+      "line": 27,
+      "match": "<artifactId>spring-boot-starter-web</artifactId>"
+    },
+    {
+      "ruleId": "UNDERTOW_REMOVED",
+      "file": "pom.xml",
+      "line": 37,
+      "match": "<artifactId>spring-boot-starter-undertow</artifactId>"
+    },
+    {
+      "ruleId": "LAUNCH_SCRIPT",
+      "file": "pom.xml",
+      "line": 65,
+      "match": "<executable>true</executable>"
+    },
+    {
+      "ruleId": "JACKSON3_NAMESPACE",
+      "file": "src/main/java/dev/rossi/orders/order/OrderEventPublisher.java",
+      "line": 3,
+      "match": "import com.fasterxml.jackson.core.JsonProcessingException;"
+    },
+    {
+      "ruleId": "JACKSON3_NAMESPACE",
+      "file": "src/main/java/dev/rossi/orders/order/OrderEventPublisher.java",
+      "line": 4,
+      "match": "import com.fasterxml.jackson.databind.ObjectMapper;"
+    },
+    {
+      "ruleId": "MOCKBEAN_REMOVED",
+      "file": "src/test/java/dev/rossi/orders/order/OrderControllerTest.java",
+      "line": 11,
+      "match": "import org.springframework.boot.test.mock.mockito.MockBean;"
+    },
+    {
+      "ruleId": "MOCKBEAN_REMOVED",
+      "file": "src/test/java/dev/rossi/orders/order/OrderControllerTest.java",
+      "line": 20,
+      "match": "    @MockBean"
+    },
+    {
+      "ruleId": "MOCKBEAN_REMOVED",
+      "file": "src/test/java/dev/rossi/orders/order/OrderControllerTest.java",
+      "line": 23,
+      "match": "    @MockBean"
+    },
+    {
+      "ruleId": "PROPERTY_RENAMED",
+      "file": "src/main/resources/application.properties",
+      "line": 4,
+      "match": "spring.dao.exceptiontranslation.enabled"
+    }
+  ],
+  "traps": [
+    {
+      "file": "src/main/java/dev/rossi/orders/config/DatabaseHealthCheck.java",
+      "line": 5,
+      "match": "import javax.sql.DataSource;",
+      "reason": "javax.sql é do JDK e não migra para jakarta"
+    },
+    {
+      "file": "src/main/java/dev/rossi/orders/order/OrderCreatedEvent.java",
+      "line": 3,
+      "match": "import com.fasterxml.jackson.annotation.JsonProperty;",
+      "reason": "jackson-annotations mantém o pacote com.fasterxml.jackson no Jackson 3"
+    },
+    {
+      "file": "pom.xml",
+      "line": 31,
+      "match": "<artifactId>spring-boot-starter-tomcat</artifactId>",
+      "reason": "spring-boot-starter-tomcat não foi renomeado"
+    },
+    {
+      "file": "pom.xml",
+      "line": 21,
+      "match": "<java.version>17</java.version>",
+      "reason": "Java 17 já atende o baseline do Boot 4"
+    }
+  ],
+  "notCovered": [
+    "@WebMvcTest mudou de pacote no Boot 4 (org.springframework.boot.webmvc.test.autoconfigure); fora do MVP v1.0"
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "name": "gradle-kts-boot3",
+  "build": "gradle-kts",
+  "bootVersion": "3.4.1",
+  "javaVersion": "21",
+  "description": "Serviço de catálogo em Spring Boot 3.4 com Gradle Kotlin DSL e version catalog. Cobre Gradle antigo, starters renomeados, Spring Session MongoDB, Spock, Jackson 2, @SpyBean e propriedade MongoDB em YAML aninhado.",
+  "expected": [
+    {
+      "ruleId": "BOOT_VERSION",
+      "file": "build.gradle.kts",
+      "line": 4,
+      "match": "id(\"org.springframework.boot\") version \"3.4.1\""
+    },
+    {
+      "ruleId": "GRADLE_VERSION",
+      "file": "gradle/wrapper/gradle-wrapper.properties",
+      "line": 3,
+      "match": "gradle-8.10.2-bin.zip"
+    },
+    {
+      "ruleId": "STARTER_RENAMED",
+      "file": "build.gradle.kts",
+      "line": 22,
+      "match": "\"org.springframework.boot:spring-boot-starter-web\""
+    },
+    {
+      "ruleId": "STARTER_RENAMED",
+      "file": "build.gradle.kts",
+      "line": 23,
+      "match": "\"org.springframework.boot:spring-boot-starter-aop\""
+    },
+    {
+      "ruleId": "SESSION_REMOVED",
+      "file": "build.gradle.kts",
+      "line": 25,
+      "match": "\"org.springframework.session:spring-session-data-mongodb\""
+    },
+    {
+      "ruleId": "SPOCK_REMOVED",
+      "file": "gradle/libs.versions.toml",
+      "line": 5,
+      "match": "module = \"org.spockframework:spock-spring\""
+    },
+    {
+      "ruleId": "JACKSON3_NAMESPACE",
+      "file": "src/main/java/dev/rossi/catalog/product/ProductService.java",
+      "line": 3,
+      "match": "import com.fasterxml.jackson.databind.JsonNode;"
+    },
+    {
+      "ruleId": "JACKSON3_NAMESPACE",
+      "file": "src/main/java/dev/rossi/catalog/product/ProductService.java",
+      "line": 4,
+      "match": "import com.fasterxml.jackson.databind.ObjectMapper;"
+    },
+    {
+      "ruleId": "MOCKBEAN_REMOVED",
+      "file": "src/test/java/dev/rossi/catalog/product/ProductServiceTest.java",
+      "line": 10,
+      "match": "import org.springframework.boot.test.mock.mockito.SpyBean;"
+    },
+    {
+      "ruleId": "MOCKBEAN_REMOVED",
+      "file": "src/test/java/dev/rossi/catalog/product/ProductServiceTest.java",
+      "line": 18,
+      "match": "    @SpyBean"
+    },
+    {
+      "ruleId": "PROPERTY_RENAMED",
+      "file": "src/main/resources/application.yml",
+      "line": 6,
+      "match": "uri: mongodb://"
+    }
+  ],
+  "traps": [
+    {
+      "file": "src/main/resources/application.yml",
+      "line": 7,
+      "match": "auto-index-creation: true",
+      "reason": "spring.data.mongodb.auto-index-creation continua em spring.data.mongodb"
+    },
+    {
+      "file": "src/main/resources/application.yml",
+      "line": 9,
+      "match": "timeout: 30m",
+      "reason": "spring.session.timeout não mudou (só spring.session.redis.*)"
+    },
+    {
+      "file": "build.gradle.kts",
+      "line": 24,
+      "match": "\"org.springframework.boot:spring-boot-starter-data-mongodb\"",
+      "reason": "starter de dados não foi renomeado"
+    },
+    {
+      "file": "build.gradle.kts",
+      "line": 13,
+      "match": "JavaLanguageVersion.of(21)",
+      "reason": "Java 21 já atende o baseline do Boot 4"
+    },
+    {
+      "file": "src/main/java/dev/rossi/catalog/audit/AuditAspect.java",
+      "line": 4,
+      "match": "import org.aspectj.lang.annotation.Aspect;",
+      "reason": "o código AspectJ não muda, só o nome do starter"
+    }
+  ],
+  "notCovered": [
+    "PROPERTY_RENAMED em YAML exige achatar as chaves aninhadas (spring > data > mongodb > uri) antes de comparar"
+  ]
+}

@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: billing-service
+  jackson:
+    json:
+      read:
+        allow-trailing-comma: true
+server:
+  port: 8081

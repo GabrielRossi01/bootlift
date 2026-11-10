@@ -1,0 +1,46 @@
+name: Bootlift - Spring Boot 4 Readiness Check
+description:
+  Reports how ready a Java project is for Spring Boot 4 and blocks new migration
+  debt in pull requests.
+author: GabrielRossi01
+
+branding:
+  icon: arrow-up-circle
+  color: green
+
+inputs:
+  path:
+    description: Project root to scan, relative to the workspace.
+    required: false
+    default: '.'
+  mode:
+    description: >
+      guardrail = only lines added by the pull request can fail the job; full =
+      every finding can fail the job. Empty = guardrail on pull_request events,
+      full on everything else.
+    required: false
+    default: ''
+  fail-on:
+    description: Minimum severity that fails the job (none | warning | error).
+    required: false
+    default: error
+  comment-on-pr:
+    description: Post or update a report comment on the pull request.
+    required: false
+    default: 'true'
+  github-token:
+    description: Token used to read the pull request diff and post comments.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  score:
+    description: Readiness score from 0 to 100 for the whole repository.
+  blocking:
+    description: Number of findings that can fail the job in the current mode.
+  errors:
+    description: Number of error-level findings in the whole repository.
+
+runs:
+  using: node24
+  main: dist/index.js

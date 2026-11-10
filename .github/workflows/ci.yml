@@ -1,0 +1,91 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Dependencies
+        id: npm-ci
+        run: npm ci
+
+      - name: Check Format
+        id: npm-format-check
+        run: npm run format:check
+
+      - name: Lint
+        id: npm-lint
+        run: npm run lint
+
+      - name: Test
+        id: npm-ci-test
+        run: npm run ci-test
+
+  test-action:
+    name: Dogfood (${{ matrix.fixture }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture:
+          - maven-boot3
+          - gradle-kts-boot3
+          - boot4-ready
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Run Bootlift on fixture
+        id: bootlift
+        uses: ./
+        with:
+          path: __fixtures__/projects/${{ matrix.fixture }}
+          comment-on-pr: false
+
+  test-invalid-input:
+    name: Dogfood (invalid input fails)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Run Bootlift on a missing directory
+        id: bootlift
+        continue-on-error: true
+        uses: ./
+        with:
+          path: does-not-exist
+
+      - name: Expect the previous step to fail
+        if: ${{ steps.bootlift.outcome != 'failure' }}
+        run: |
+          echo "Bootlift should fail when the project directory is missing."
+          exit 1

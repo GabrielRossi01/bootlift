@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: catalog-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/catalog
+      auto-index-creation: true
+  session:
+    timeout: 30m

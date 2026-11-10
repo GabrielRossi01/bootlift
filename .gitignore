@@ -100,3 +100,8 @@ __tests__/runner/*
 # IDE files
 .idea
 *.code-workspace
+
+# Saídas de build geradas pela IDE dentro das fixtures
+__fixtures__/projects/**/.gradle/
+__fixtures__/projects/**/target/
+__fixtures__/projects/**/build/

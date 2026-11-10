@@ -1,9 +1,16 @@
-# Bootlift — Spring Boot 4 Readiness Check
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./.github/assets/bootlift-logo-dark.svg">
+    <img src="./.github/assets/bootlift-logo-light.svg" alt="Bootlift — Spring Boot 4 Readiness Check" width="380">
+  </picture>
+</h1>
 
-![CI](https://github.com/GabrielRossi01/bootlift/actions/workflows/ci.yml/badge.svg)
-![Check dist/](https://github.com/GabrielRossi01/bootlift/actions/workflows/check-dist.yml/badge.svg)
-![CodeQL](https://github.com/GabrielRossi01/bootlift/actions/workflows/codeql-analysis.yml/badge.svg)
-![Coverage](./badges/coverage.svg)
+<p align="center">
+  <a href="https://github.com/GabrielRossi01/bootlift/actions/workflows/ci.yml"><img src="https://github.com/GabrielRossi01/bootlift/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/GabrielRossi01/bootlift/actions/workflows/check-dist.yml"><img src="https://github.com/GabrielRossi01/bootlift/actions/workflows/check-dist.yml/badge.svg" alt="Check dist/"></a>
+  <a href="https://github.com/GabrielRossi01/bootlift/actions/workflows/codeql-analysis.yml"><img src="https://github.com/GabrielRossi01/bootlift/actions/workflows/codeql-analysis.yml/badge.svg" alt="CodeQL"></a>
+  <img src="./badges/coverage.svg" alt="Coverage">
+</p>
 
 GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boot
 4** e age direto no pull request:

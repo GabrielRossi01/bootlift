@@ -105,3 +105,5 @@ __tests__/runner/*
 __fixtures__/projects/**/.gradle/
 __fixtures__/projects/**/target/
 __fixtures__/projects/**/build/
+__fixtures__/projects/**/bin/
+__fixtures__/projects/**/out/

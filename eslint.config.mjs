@@ -52,7 +52,9 @@ export default [
             'eslint.config.mjs',
             'jest.config.js',
             'rollup.config.ts'
-          ]
+          ],
+          // O padrão é 8 arquivos fora do tsconfig; os testes já passam disso.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 32
         },
         tsconfigRootDir: import.meta.dirname
       }

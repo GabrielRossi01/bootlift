@@ -41,6 +41,27 @@ export interface SourceFile {
   content: string
 }
 
+export type BuildTool = 'maven' | 'gradle'
+
+/** Uma versão encontrada no projeto e onde ela está declarada. */
+export interface VersionRef {
+  /** Versão normalizada: "3.3.5", "17" (Java "1.8" vira "8"), "8.10.2". */
+  value: string
+  file: string
+  /** Linha 1-based onde a versão está escrita (é ali que a correção acontece). */
+  line: number
+  /** De onde veio, ex.: "maven-parent", "gradle-plugin", "version-catalog". */
+  source: string
+}
+
+/** O que o scanner descobriu sobre o projeto (Dia 2). */
+export interface ProjectInfo {
+  buildTools: BuildTool[]
+  boot: VersionRef[]
+  java: VersionRef[]
+  gradle: VersionRef[]
+}
+
 export interface Rule {
   id: RuleId
   severity: Severity

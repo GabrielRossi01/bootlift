@@ -36,7 +36,38 @@ describe('main.ts', () => {
     )
     expect(core.info).toHaveBeenCalledWith('  modo    : full')
     expect(core.info).toHaveBeenLastCalledWith(
-      expect.stringMatching(/^ok — fundação pronta/)
+      expect.stringMatching(/^ok — scanner pronto/)
+    )
+  })
+
+  it('mostra arquivos lidos e versões encontradas', async () => {
+    useInputs({ path: '__fixtures__/projects/gradle-kts-boot3' })
+
+    await run()
+
+    expect(core.setFailed).not.toHaveBeenCalled()
+    expect(core.info).toHaveBeenCalledWith(
+      '  arquivos: 10 (java 6 · build 3 · config 1)'
+    )
+    expect(core.info).toHaveBeenCalledWith('  build   : gradle')
+    expect(core.info).toHaveBeenCalledWith(
+      '  Spring Boot: 3.4.1 (__fixtures__/projects/gradle-kts-boot3/build.gradle.kts:4)'
+    )
+    expect(core.info).toHaveBeenCalledWith(
+      '  Gradle     : 8.10.2 (__fixtures__/projects/gradle-kts-boot3/gradle/wrapper/gradle-wrapper.properties:3)'
+    )
+    expect(core.startGroup).toHaveBeenCalledWith('Arquivos analisados')
+    expect(core.endGroup).toHaveBeenCalled()
+  })
+
+  it('avisa quando a pasta não tem nenhum arquivo de projeto', async () => {
+    useInputs({ path: '.github' })
+
+    await run()
+
+    expect(core.setFailed).not.toHaveBeenCalled()
+    expect(core.warning).toHaveBeenCalledWith(
+      expect.stringContaining('Nenhum arquivo de projeto Java/Spring')
     )
   })
 

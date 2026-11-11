@@ -24,9 +24,10 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 
 > [!NOTE]
 >
-> **Status: Dia 1 (fundação).** O contrato do `action.yml`, os tipos, as
-> fixtures e a CI estão prontos. O scanner (Dia 2), as regras (Dia 3) e os
-> relatórios no PR (Dias 4 e 5) chegam nos próximos dias.
+> **Status: Dia 2 (scanner).** A action já lê o projeto (Maven, Gradle Groovy e
+> Kotlin DSL, version catalog, `application.*` e código Java/Kotlin) e descobre
+> as versões de Spring Boot, Java e Gradle. As regras (Dia 3) e os relatórios no
+> PR (Dias 4 e 5) chegam nos próximos dias.
 
 ## Uso
 

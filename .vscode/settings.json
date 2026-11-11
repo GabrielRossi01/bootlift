@@ -10,6 +10,15 @@
     }
   ],
   "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
-    { "text": "Always include a list of key changes." }
+    {
+      "text": "Always include a list of key changes."
+    }
+  ],
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/__fixtures__/**"
   ]
 }

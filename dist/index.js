@@ -32,7 +32,7 @@ import require$$1$5 from 'node:dns';
 import require$$5$3 from 'string_decoder';
 import 'child_process';
 import 'timers';
-import { stat as stat$1 } from 'node:fs/promises';
+import { readdir as readdir$1, lstat as lstat$1, readFile, stat as stat$1 } from 'node:fs/promises';
 import path from 'node:path';
 
 // We use any as a valid input type
@@ -106,6 +106,9 @@ function toCommandProperties(annotationProperties) {
 function issueCommand(command, properties, message) {
     const cmd = new Command(command, properties, message);
     process.stdout.write(cmd.toString() + os.EOL);
+}
+function issue(name, message = '') {
+    issueCommand(name, {}, message);
 }
 const CMD_STRING = '::';
 class Command {
@@ -27963,11 +27966,35 @@ function error(message, properties = {}) {
     issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
+ * Adds a warning issue
+ * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function warning(message, properties = {}) {
+    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+/**
  * Writes info to log with console.log.
  * @param message info message
  */
 function info(message) {
     process.stdout.write(message + os.EOL);
+}
+/**
+ * Begin an output group.
+ *
+ * Output until the next `groupEnd` will be foldable in this group
+ *
+ * @param name The name of the output group
+ */
+function startGroup(name) {
+    issue('group', name);
+}
+/**
+ * End an output group.
+ */
+function endGroup() {
+    issue('endgroup');
 }
 
 const MODES = ['guardrail', 'full'];
@@ -28016,11 +28043,306 @@ function parseBoolean(name, raw, fallback) {
 }
 
 /**
+ * Descobre as versões de Spring Boot, Java e Gradle declaradas no projeto.
+ *
+ * Cada versão volta com arquivo e linha, porque as regras do Dia 3 vão apontar
+ * exatamente onde mudar. Projetos multi-módulo podem ter várias ocorrências;
+ * todas são devolvidas.
+ */
+function detectProject(files) {
+    const info = { buildTools: [], boot: [], java: [], gradle: [] };
+    const tools = new Set();
+    for (const file of files) {
+        if (file.scope !== 'build')
+            continue;
+        const name = file.path.split('/').pop() ?? '';
+        if (name === 'pom.xml') {
+            tools.add('maven');
+            readMaven(file, info);
+        }
+        else if (name === 'build.gradle' || name === 'build.gradle.kts') {
+            tools.add('gradle');
+            readGradleBuild(file, info);
+        }
+        else if (name.endsWith('.versions.toml')) {
+            readVersionCatalog(file, info);
+        }
+        else if (name === 'gradle.properties') {
+            readGradleProperties(file, info);
+        }
+        else if (name === 'gradle-wrapper.properties') {
+            readGradleWrapper(file, info);
+        }
+    }
+    info.buildTools = [...tools].sort();
+    info.boot = dedupe(info.boot);
+    info.java = dedupe(info.java);
+    info.gradle = dedupe(info.gradle);
+    return info;
+}
+// ---------------------------------------------------------------- Maven
+function readMaven(file, info) {
+    const xml = mask(file.content, /<!--[\s\S]*?-->/g);
+    const props = mavenProperties(xml);
+    const parent = /<parent>[\s\S]*?<\/parent>/.exec(xml);
+    if (parent &&
+        /<artifactId>\s*spring-boot-starter-parent\s*</.test(parent[0])) {
+        addTag(file, xml, parent, 'version', props, info.boot, 'maven-parent');
+    }
+    for (const dep of xml.matchAll(/<dependency>[\s\S]*?<\/dependency>/g)) {
+        if (/<artifactId>\s*spring-boot-dependencies\s*</.test(dep[0])) {
+            addTag(file, xml, dep, 'version', props, info.boot, 'maven-bom');
+        }
+    }
+    for (const name of ['java.version', 'maven.compiler.release']) {
+        const prop = props.get(name);
+        if (prop)
+            push(info.java, prop.value, file, prop.line, `maven-${name}`, true);
+    }
+    for (const m of xml.matchAll(/<release>\s*([^<\s]+)\s*<\/release>/g)) {
+        const resolved = resolve(m[1], props, lineAt(xml, m.index));
+        if (resolved) {
+            push(info.java, resolved.value, file, resolved.line, 'maven-compiler-release', true);
+        }
+    }
+}
+function mavenProperties(xml) {
+    const props = new Map();
+    const block = /<properties>([\s\S]*?)<\/properties>/.exec(xml);
+    if (!block)
+        return props;
+    const start = block.index + '<properties>'.length;
+    for (const m of block[1].matchAll(/<([\w.-]+)>\s*([^<]*?)\s*<\/\1>/g)) {
+        props.set(m[1], { value: m[2], line: lineAt(xml, start + m.index) });
+    }
+    return props;
+}
+/** Lê `<tag>valor</tag>` dentro de um bloco, resolvendo `${propriedade}`. */
+function addTag(file, xml, block, tag, props, target, source) {
+    const m = new RegExp(`<${tag}>\\s*([^<\\s]+)\\s*</${tag}>`).exec(block[0]);
+    if (!m)
+        return;
+    const line = lineAt(xml, (block.index ?? 0) + m.index);
+    const resolved = resolve(m[1], props, line);
+    if (resolved)
+        push(target, resolved.value, file, resolved.line, source);
+}
+/** `${x}` vira o valor da propriedade x, apontando para a linha dela. */
+function resolve(raw, props, line) {
+    const ref = /^\$\{([\w.-]+)\}$/.exec(raw);
+    if (!ref)
+        return { value: raw, line };
+    return props.get(ref[1]);
+}
+// ---------------------------------------------------------------- Gradle
+const BOOT_PLUGIN = /\bid\s*\(?\s*["']org\.springframework\.boot["']\s*\)?\s*version\s*\(?\s*["']([^"']+)["']/g;
+const BOOT_COORDS = /org\.springframework\.boot:spring-boot-(?:gradle-plugin|dependencies):(\d[\w.-]*)/g;
+const TOOLCHAIN = /JavaLanguageVersion\.of\(\s*["']?(\d+)["']?\s*\)|jvmToolchain\(\s*(\d+)\s*\)/g;
+const COMPATIBILITY = /\b(?:source|target)Compatibility\s*=\s*(?:JavaVersion\.VERSION_(\d+(?:_\d+)?)|["']?(\d+(?:\.\d+)?)["']?)/g;
+function readGradleBuild(file, info) {
+    const code = mask(file.content, /\/\*[\s\S]*?\*\//g, /(^|\s)\/\/.*$/gm);
+    for (const m of code.matchAll(BOOT_PLUGIN)) {
+        push(info.boot, m[1], file, lineAt(code, m.index), 'gradle-plugin');
+    }
+    for (const m of code.matchAll(BOOT_COORDS)) {
+        push(info.boot, m[1], file, lineAt(code, m.index), 'gradle-coordinates');
+    }
+    for (const m of code.matchAll(TOOLCHAIN)) {
+        push(info.java, m[1] ?? m[2], file, lineAt(code, m.index), 'gradle-toolchain', true);
+    }
+    for (const m of code.matchAll(COMPATIBILITY)) {
+        const value = m[1] ? m[1].replace('_', '.') : m[2];
+        push(info.java, value, file, lineAt(code, m.index), 'gradle-compatibility', true);
+    }
+}
+function readVersionCatalog(file, info) {
+    const toml = mask(file.content, /(^|\s)#.*$/gm);
+    const versions = new Map();
+    let section = '';
+    const entries = [];
+    toml.split('\n').forEach((raw, i) => {
+        const text = raw.trim();
+        const header = /^\[([\w.-]+)\]$/.exec(text);
+        if (header) {
+            section = header[1];
+            return;
+        }
+        const kv = /^([\w.-]+)\s*=\s*(.+)$/.exec(text);
+        if (!kv)
+            return;
+        if (section === 'versions') {
+            const value = /^["']([^"']+)["']$/.exec(kv[2]);
+            if (value)
+                versions.set(kv[1], { value: value[1], line: i + 1 });
+        }
+        else {
+            entries.push({ section, key: kv[1], body: kv[2], line: i + 1 });
+        }
+    });
+    for (const e of entries) {
+        const isBoot = (e.section === 'plugins' &&
+            /id\s*=\s*["']org\.springframework\.boot["']/.test(e.body)) ||
+            (e.section === 'libraries' &&
+                /org\.springframework\.boot:spring-boot-dependencies/.test(e.body));
+        if (!isBoot)
+            continue;
+        const direct = /(?:^|[\s{,])version\s*=\s*["']([^"']+)["']/.exec(e.body);
+        const ref = /version\.ref\s*=\s*["']([^"']+)["']/.exec(e.body);
+        const found = direct
+            ? { value: direct[1], line: e.line }
+            : ref
+                ? versions.get(ref[1])
+                : undefined;
+        if (found)
+            push(info.boot, found.value, file, found.line, 'version-catalog');
+    }
+}
+function readGradleProperties(file, info) {
+    file.content.split('\n').forEach((raw, i) => {
+        const m = /^\s*spring[-._]?boot[-._]?version\s*[=:]\s*(\d[\w.-]*)\s*$/i.exec(raw);
+        if (m)
+            push(info.boot, m[1], file, i + 1, 'gradle-properties');
+    });
+}
+function readGradleWrapper(file, info) {
+    const m = /^\s*distributionUrl\s*=.*gradle-(\d[\w.-]*?)-(?:bin|all)\.zip/m.exec(file.content);
+    if (m)
+        push(info.gradle, m[1], file, lineAt(file.content, m.index), 'gradle-wrapper');
+}
+// ---------------------------------------------------------------- helpers
+/** Troca comentários por espaços, mantendo as quebras de linha (e as posições). */
+function mask(content, ...patterns) {
+    return patterns.reduce((text, pattern) => text.replace(pattern, (match) => match.replace(/[^\n]/g, ' ')), content);
+}
+/** Linha 1-based de um índice dentro do texto. */
+function lineAt(content, index) {
+    return content.slice(0, index ?? 0).split('\n').length;
+}
+/** Java "1.8" vira "8"; "11.0" vira "11"; o resto passa direto. */
+function normalizeJava(value) {
+    const legacy = /^1\.(\d+)$/.exec(value);
+    if (legacy)
+        return legacy[1];
+    return value.replace(/\.0$/, '');
+}
+function push(target, value, file, line, source, java = false) {
+    if (!/^\d/.test(value))
+        return; // placeholders como $springBootVersion ficam de fora
+    target.push({
+        value: java ? normalizeJava(value) : value,
+        file: file.path,
+        line,
+        source
+    });
+}
+/** Remove repetições da mesma declaração (ex.: release apontando para java.version). */
+function dedupe(refs) {
+    const seen = new Set();
+    return refs.filter((r) => {
+        const key = `${r.file}:${r.line}:${r.value}`;
+        if (seen.has(key))
+            return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+/**
+ * Pastas que nunca têm código do usuário. São puladas em qualquer nível, sem
+ * entrar nelas (é isso que mantém o scan rápido em monorepos grandes).
+ */
+const ALWAYS_SKIP = new Set(['node_modules']);
+/**
+ * Pastas de saída de build. Só são puladas FORA de `src/`: um pacote Java
+ * chamado `build` (src/main/java/com/acme/build) continua sendo lido.
+ */
+const OUTPUT_DIRS = new Set(['target', 'build', 'out', 'bin']);
+/** Arquivos maiores que isso costumam ser gerados; não vale a pena ler. */
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const BUILD_FILES = new Set([
+    'pom.xml',
+    'build.gradle',
+    'build.gradle.kts',
+    'gradle.properties',
+    'gradle-wrapper.properties'
+]);
+/** Descobre o escopo de um arquivo pelo nome, ou `undefined` se não interessa. */
+function classify(fileName) {
+    if (BUILD_FILES.has(fileName) || fileName.endsWith('.versions.toml')) {
+        return 'build';
+    }
+    if (/^(application|bootstrap)([-.][\w.-]*)?\.(properties|ya?ml)$/.test(fileName)) {
+        return 'config';
+    }
+    if (fileName.endsWith('.java') || fileName.endsWith('.kt'))
+        return 'java';
+    return undefined;
+}
+/** Decide se o scanner deve entrar numa pasta. */
+function shouldEnter(dirName, insideSrc) {
+    if (dirName.startsWith('.'))
+        return false; // .git, .gradle, .idea, .mvn...
+    if (ALWAYS_SKIP.has(dirName))
+        return false;
+    if (!insideSrc && OUTPUT_DIRS.has(dirName))
+        return false;
+    return true;
+}
+/**
+ * Percorre `root` e devolve os arquivos relevantes, ordenados pelo caminho.
+ *
+ * @param root      pasta do projeto (input `path` já resolvido)
+ * @param workspace raiz do repositório; os caminhos saem relativos a ela, com
+ *                  "/", que é o formato que o GitHub usa nas annotations
+ */
+async function scan(root, workspace) {
+    const files = [];
+    async function walk(dir, insideSrc) {
+        const entries = await readdir$1(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const full = path.join(dir, entry.name);
+            if (entry.isSymbolicLink())
+                continue; // evita loops e arquivos fora do repo
+            if (entry.isDirectory()) {
+                if (shouldEnter(entry.name, insideSrc)) {
+                    await walk(full, insideSrc || entry.name === 'src');
+                }
+                continue;
+            }
+            const scope = entry.isFile() ? classify(entry.name) : undefined;
+            if (!scope)
+                continue;
+            const { size } = await lstat$1(full);
+            if (size > MAX_FILE_BYTES)
+                continue;
+            files.push({
+                scope,
+                path: toPosix(path.relative(workspace, full)),
+                content: await readFile(full, 'utf8')
+            });
+        }
+    }
+    await walk(root, false);
+    return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+/** Quantos arquivos de cada escopo foram lidos. */
+function countByScope(files) {
+    const counts = { java: 0, build: 0, config: 0 };
+    for (const file of files)
+        counts[file.scope]++;
+    return counts;
+}
+function toPosix(p) {
+    return p.split(path.sep).join('/');
+}
+
+/**
  * Ponto de entrada da action.
  *
- * Dia 1 (fundação): valida inputs e o diretório do projeto e loga a
- * configuração. Scanner (Dia 2), regras (Dia 3) e relatórios (Dia 4) entram
- * aqui depois, sem mudar o contrato do action.yml.
+ * Dia 1: valida inputs e o diretório do projeto.
+ * Dia 2: lê os arquivos do projeto e descobre as versões de Boot, Java e
+ * Gradle. Regras (Dia 3) e relatórios (Dia 4) entram aqui depois, sem mudar
+ * o contrato do action.yml.
  */
 async function run() {
     try {
@@ -28033,11 +28355,34 @@ async function run() {
         info(`  modo    : ${config.mode}`);
         info(`  fail-on : ${config.failOn}`);
         info(`  comentar no PR: ${config.commentOnPr ? 'sim' : 'não'}`);
-        info('ok — fundação pronta (análise chega nos Dias 2 e 3)');
+        const files = await scan(root, workspace);
+        if (files.length === 0) {
+            warning(`Nenhum arquivo de projeto Java/Spring encontrado em "${config.path}". ` +
+                'Confira o input "path".');
+            return;
+        }
+        const counts = countByScope(files);
+        const project = detectProject(files);
+        info(`  arquivos: ${files.length} (java ${counts.java} · build ${counts.build} · config ${counts.config})`);
+        info(`  build   : ${project.buildTools.join(', ') || '—'}`);
+        info(`  Spring Boot: ${describe(project.boot)}`);
+        info(`  Java       : ${describe(project.java)}`);
+        info(`  Gradle     : ${describe(project.gradle)}`);
+        startGroup('Arquivos analisados');
+        for (const file of files)
+            info(`${file.scope.padEnd(6)} ${file.path}`);
+        endGroup();
+        info('ok — scanner pronto (regras chegam no Dia 3)');
     }
     catch (error) {
         setFailed(error instanceof Error ? error.message : String(error));
     }
+}
+/** "3.3.5 (pom.xml:10)" ou "—" quando nada foi encontrado. */
+function describe(refs) {
+    if (refs.length === 0)
+        return '—';
+    return refs.map((r) => `${r.value} (${r.file}:${r.line})`).join(', ');
 }
 async function assertDirectory(absolute, input) {
     const info = await stat$1(absolute).catch(() => undefined);

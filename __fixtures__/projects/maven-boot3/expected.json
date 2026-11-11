@@ -8,8 +8,8 @@
     {
       "ruleId": "BOOT_VERSION",
       "file": "pom.xml",
-      "line": 9,
-      "match": "<artifactId>spring-boot-starter-parent</artifactId>"
+      "line": 10,
+      "match": "<version>3.3.5</version>"
     },
     {
       "ruleId": "STARTER_RENAMED",

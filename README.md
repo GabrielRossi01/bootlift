@@ -24,10 +24,17 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 
 > [!NOTE]
 >
-> **Status: Dia 4 (regras e relatórios).** As 12 regras rodam, o score sai de 0
-> a 100 e a action publica job summary, anotações nas linhas e um comentário
-> único no PR, além de respeitar o guardrail. As _suggestions_ de 1 clique
-> chegam no Dia 5.
+> **Status: Dia 5 (sugestões de 1 clique).** Regras, score, relatório no PR,
+> guardrail e correções aplicáveis em 1 clique estão prontos. Falta o release
+> v1.0 no Marketplace (Dia 6).
+
+<!-- GIF da demo: grave seguindo o passo a passo do Dia 5, salve em
+.github/assets/bootlift-demo.gif e descomente a linha abaixo.
+<p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
+-->
+
+Veja funcionando de verdade no
+[bootlift-demo](https://github.com/GabrielRossi01/bootlift-demo/pulls?q=is%3Apr).
 
 ## Uso
 
@@ -57,6 +64,7 @@ jobs:
 | `mode`          | _(vazio)_             | `guardrail` ou `full`. Vazio = `guardrail` em `pull_request`, `full` nos demais eventos.          |
 | `fail-on`       | `error`               | Severidade mínima que reprova o job: `none`, `warning` ou `error`.                                |
 | `comment-on-pr` | `true`                | Publica ou atualiza o comentário com o relatório no PR.                                           |
+| `suggestions`   | `true`                | No guardrail, publica cada correção determinística como sugestão de 1 clique na linha do PR.      |
 | `github-token`  | `${{ github.token }}` | Token para ler o diff do PR e comentar. Em PRs de fork ele é somente leitura e a action só avisa. |
 
 ### Modos
@@ -74,7 +82,31 @@ Cada execução gera:
 - um **job summary** com score, versões detectadas e tabela de achados;
 - **anotações** (`error`/`warning`/`notice`) nas linhas dos arquivos;
 - um **comentário no PR** (com `comment-on-pr: true`), atualizado a cada push em
-  vez de duplicado. Ele exige `pull-requests: write`.
+  vez de duplicado;
+- **sugestões de 1 clique** nas linhas novas (com `suggestions: true`).
+
+Comentário e sugestões exigem `pull-requests: write`. Em PRs vindos de fork o
+token é somente leitura: a action avisa, mas o relatório e o `fail-on` continuam
+funcionando.
+
+### Sugestões de 1 clique
+
+No modo guardrail, cada achado **novo** que tem correção certa vira um
+comentário de review na própria linha, com a linha corrigida pronta. O autor do
+PR clica em **Commit suggestion** (ou junta todas com **Add suggestion to
+batch**) e o próximo push já passa.
+
+| Regra               | Exemplo de sugestão                                                     |
+| ------------------- | ----------------------------------------------------------------------- |
+| `JAKARTA_NAMESPACE` | `import javax.servlet.Filter;` → `import jakarta.servlet.Filter;`       |
+| `MOCKBEAN_REMOVED`  | `@MockBean` → `@MockitoBean` (e o import novo)                          |
+| `STARTER_RENAMED`   | `spring-boot-starter-web` → `spring-boot-starter-webmvc`                |
+| `PROPERTY_RENAMED`  | `spring.data.mongodb.uri=…` → `spring.mongodb.uri=…` (em `.properties`) |
+
+Sugestões já publicadas não são repetidas a cada push, e um review traz no
+máximo 20 (as demais aparecem depois que essas forem aplicadas). Correções que
+dependem de contexto, como trocar `com.fasterxml.jackson` por `tools.jackson`,
+continuam só no relatório.
 
 ### Score
 

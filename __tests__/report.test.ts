@@ -118,6 +118,31 @@ describe('renderReport', () => {
     )
   })
 
+  it('no guardrail avisa quantas correções têm sugestão de 1 clique', () => {
+    const base = {
+      analysis: analysis([finding(1)]),
+      blocking: [finding(1)],
+      mode: 'guardrail' as const,
+      pullRequest: true,
+      failOn: 'error' as const
+    }
+    expect(renderReport({ ...base, suggestions: 1 })).toContain(
+      '💡 1 correção pode ser aplicada em 1 clique'
+    )
+    expect(renderReport({ ...base, suggestions: 3 })).toContain(
+      '💡 3 correções podem ser aplicadas em 1 clique'
+    )
+    expect(renderReport({ ...base, suggestions: 0 })).not.toContain('💡')
+    expect(
+      renderReport({
+        ...base,
+        mode: 'full',
+        pullRequest: false,
+        suggestions: 3
+      })
+    ).not.toContain('💡')
+  })
+
   it('no guardrail sem problemas novos deixa isso claro', () => {
     const md = renderReport({
       analysis: analysis([finding(1)]),

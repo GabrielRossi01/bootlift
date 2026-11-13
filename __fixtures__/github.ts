@@ -18,13 +18,32 @@ interface Comment {
   body?: string
 }
 
+interface ReviewComment {
+  path: string
+  line?: number
+  body?: string
+}
+
+interface Review {
+  commit_id?: string
+  event: string
+  body: string
+  comments: { path: string; line: number; side: string; body: string }[]
+}
+
 /** API falsa: arquivos do PR, comentários existentes e o que foi gravado. */
 export function fakeOctokit(options: {
   files?: { filename: string; patch?: string }[]
   comments?: Comment[]
   failComments?: boolean
+  reviewComments?: ReviewComment[]
+  failReview?: boolean
 }) {
-  const calls = { created: [] as string[], updated: [] as Comment[] }
+  const calls = {
+    created: [] as string[],
+    updated: [] as Comment[],
+    reviews: [] as Review[]
+  }
   const failIfNeeded = () => {
     if (options.failComments)
       throw new Error('Resource not accessible by integration')
@@ -32,7 +51,16 @@ export function fakeOctokit(options: {
   const octokit = {
     rest: {
       pulls: {
-        listFiles: jest.fn(async () => ({ data: options.files ?? [] }))
+        listFiles: jest.fn(async () => ({ data: options.files ?? [] })),
+        listReviewComments: jest.fn(async () => ({
+          data: options.reviewComments ?? []
+        })),
+        createReview: jest.fn(async (review: Review) => {
+          if (options.failReview)
+            throw new Error('Resource not accessible by integration')
+          calls.reviews.push(review)
+          return { data: { id: 1 } }
+        })
       },
       issues: {
         listComments: jest.fn(async () => {

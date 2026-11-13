@@ -98,5 +98,7 @@ export interface Config {
   mode: Mode
   failOn: FailOn
   commentOnPr: boolean
+  /** Publica as correções como sugestões de 1 clique no PR (Dia 5). */
+  suggestions: boolean
   token: string
 }

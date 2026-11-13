@@ -7,6 +7,7 @@ import { isPullRequestEvent, readConfig } from './config.js'
 import { addedLines, type Octokit } from './report/diff.js'
 import { renderReport } from './report/markdown.js'
 import { upsertComment } from './report/pr-comment.js'
+import { postSuggestions, suggestable } from './report/review.js'
 import { shouldFail } from './rules/engine.js'
 import { countByScope, scan } from './scanner.js'
 import type { Config, Finding, VersionRef } from './types.js'
@@ -22,6 +23,7 @@ export const MAX_ANNOTATIONS = 50
  * 3. Decide o que bloqueia (guardrail no diff do PR ou full), publica
  *    anotações, job summary e comentário no PR, define outputs e falha o
  *    job conforme o fail-on (Dia 4).
+ * 4. No guardrail, publica as correções como sugestões de 1 clique (Dia 5).
  */
 export async function run(): Promise<void> {
   try {
@@ -79,13 +81,19 @@ export async function run(): Promise<void> {
 
     annotate(blocking)
 
+    // Sugestões só existem no guardrail: o GitHub só aceita comentário de
+    // review em linhas do diff, e `blocking` aqui é exatamente isso.
+    const fixes =
+      guardrail && config.suggestions && octokit ? suggestable(blocking) : []
+
     const report = renderReport({
       analysis,
       blocking,
       mode: guardrail ? 'guardrail' : 'full',
       pullRequest: guardrail,
       failOn: config.failOn,
-      link: linkBuilder(pr?.headSha)
+      link: linkBuilder(pr?.headSha),
+      suggestions: fixes.length
     })
 
     if (process.env.GITHUB_STEP_SUMMARY) {
@@ -110,6 +118,27 @@ export async function run(): Promise<void> {
             `Não foi possível comentar no PR (PRs de fork têm token somente leitura): ${message(error)}`
           )
         }
+      }
+    }
+
+    if (pr && octokit && fixes.length > 0) {
+      try {
+        const { posted, skipped } = await postSuggestions(
+          octokit,
+          {
+            ...github.context.repo,
+            pull_number: pr.number,
+            commit_id: pr.headSha
+          },
+          fixes
+        )
+        core.info(
+          `  sugestões: ${posted} publicada(s)${skipped ? `, ${skipped} já estavam no PR` : ''}`
+        )
+      } catch (error) {
+        core.warning(
+          `Não foi possível publicar as sugestões no PR (PRs de fork têm token somente leitura): ${message(error)}`
+        )
       }
     }
 

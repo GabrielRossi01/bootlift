@@ -28,6 +28,12 @@ inputs:
     description: Post or update a report comment on the pull request.
     required: false
     default: 'true'
+  suggestions:
+    description: >
+      In guardrail mode, post each deterministic fix as a one-click suggestion
+      on the line added by the pull request.
+    required: false
+    default: 'true'
   github-token:
     description: Token used to read the pull request diff and post comments.
     required: false

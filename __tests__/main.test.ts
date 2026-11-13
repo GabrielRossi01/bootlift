@@ -166,6 +166,84 @@ describe('main.ts', () => {
       )
     })
 
+    it('publica a correção do @MockBean como sugestão de 1 clique', async () => {
+      const line = mockBeanLine()
+      const fake = usePullRequest([
+        {
+          filename: TEST_FILE,
+          patch: `@@ -${line},0 +${line},1 @@\n+    @MockBean`
+        }
+      ])
+      useInputs({ path: MAVEN, 'github-token': 't' })
+
+      await run()
+
+      expect(fake.calls.reviews).toHaveLength(1)
+      expect(fake.calls.reviews[0]).toMatchObject({
+        commit_id: 'abc123',
+        event: 'COMMENT',
+        comments: [
+          expect.objectContaining({
+            path: TEST_FILE,
+            line,
+            body: expect.stringContaining(
+              '```suggestion\n    @MockitoBean\n```'
+            )
+          })
+        ]
+      })
+      expect(fake.calls.created[0]).toContain(
+        '1 correção pode ser aplicada em 1 clique'
+      )
+      expect(core.info).toHaveBeenCalledWith('  sugestões: 1 publicada(s)')
+    })
+
+    it('com suggestions: false, não abre review', async () => {
+      const line = mockBeanLine()
+      const fake = usePullRequest([
+        {
+          filename: TEST_FILE,
+          patch: `@@ -${line},0 +${line},1 @@\n+    @MockBean`
+        }
+      ])
+      useInputs({ path: MAVEN, 'github-token': 't', suggestions: 'false' })
+
+      await run()
+
+      expect(fake.octokit.rest.pulls.createReview).not.toHaveBeenCalled()
+      expect(fake.calls.created[0]).not.toContain('1 clique')
+    })
+
+    it('não sugere nada para o código legado', async () => {
+      const fake = usePullRequest([])
+      useInputs({ path: MAVEN, 'github-token': 't' })
+
+      await run()
+
+      expect(fake.octokit.rest.pulls.createReview).not.toHaveBeenCalled()
+    })
+
+    it('em PR de fork, avisa que não publicou as sugestões e segue', async () => {
+      const line = mockBeanLine()
+      usePullRequest(
+        [
+          {
+            filename: TEST_FILE,
+            patch: `@@ -${line},0 +${line},1 @@\n+    @MockBean`
+          }
+        ],
+        { failReview: true }
+      )
+      useInputs({ path: MAVEN, 'github-token': 't', 'fail-on': 'none' })
+
+      await run()
+
+      expect(core.warning).toHaveBeenCalledWith(
+        expect.stringContaining('Não foi possível publicar as sugestões')
+      )
+      expect(core.setFailed).not.toHaveBeenCalled()
+    })
+
     it('não reprova um PR que não toca no código legado', async () => {
       usePullRequest([{ filename: 'README.md', patch: '@@ -1 +1 @@\n-a\n+b' }])
       useInputs({ path: MAVEN, 'github-token': 't', 'comment-on-pr': 'false' })

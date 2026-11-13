@@ -16,6 +16,7 @@ describe('readConfig', () => {
       mode: 'full',
       failOn: 'error',
       commentOnPr: true,
+      suggestions: true,
       token: 't0k3n'
     })
   })
@@ -50,7 +51,12 @@ describe('readConfig', () => {
     )
   })
 
+  it('lê suggestions como booleano', () => {
+    expect(readConfig(inputs({ suggestions: 'false' })).suggestions).toBe(false)
+  })
+
   it.each([
+    [{ suggestions: 'sim' }, /Input "suggestions" inválido: "sim"/],
     [{ mode: 'autofix' }, /Input "mode" inválido: "autofix"/],
     [{ 'fail-on': 'critical' }, /Input "fail-on" inválido: "critical"/],
     [{ 'comment-on-pr': 'yes' }, /Input "comment-on-pr" inválido: "yes"/]

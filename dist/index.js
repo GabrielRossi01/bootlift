@@ -34647,6 +34647,7 @@ function readConfig(getInput, eventName) {
         mode,
         failOn,
         commentOnPr: parseBoolean('comment-on-pr', getInput('comment-on-pr'), true),
+        suggestions: parseBoolean('suggestions', getInput('suggestions'), true),
         token: getInput('github-token')
     };
 }
@@ -34738,6 +34739,9 @@ function renderReport(input) {
     else {
         out.push(`🔎 **Modo full:** ${plural(findings.length, 'achado')} no repositório.`, '');
     }
+    if (guardrail && input.suggestions) {
+        out.push(`💡 ${plural(input.suggestions, 'correção pode', 'correções podem')} ser aplicada${input.suggestions === 1 ? '' : 's'} em 1 clique: veja as sugestões na aba **Files changed**.`, '');
+    }
     out.push('| Spring Boot | Java | Gradle | Build |', '| --- | --- | --- | --- |', `| ${versions(project.boot)} | ${versions(project.java)} | ${versions(project.gradle)} | ${project.buildTools.join(', ') || '—'} |`, '');
     if (findings.length > 0) {
         if (guardrail) {
@@ -34817,6 +34821,96 @@ async function upsertComment(octokit, issue, body) {
     }
     await octokit.rest.issues.createComment({ ...issue, body });
     return 'created';
+}
+
+/** Marcador invisível das sugestões do Bootlift (evita repetir a cada push). */
+const SUGGESTION_MARKER = '<!-- bootlift:suggestion -->';
+/** Um review com centenas de comentários vira ruído; o resto fica no relatório. */
+const MAX_SUGGESTIONS = 20;
+/**
+ * Achados que viram sugestão de 1 clique: os que têm correção determinística.
+ * Uma sugestão por linha. Se duas regras corrigem a mesma linha, vai a
+ * primeira; a outra aparece no próximo push, já sobre a linha corrigida.
+ */
+function suggestable(findings) {
+    const byLine = new Map();
+    for (const f of findings) {
+        if (f.suggestion === undefined)
+            continue;
+        const key = `${f.file}:${f.line}`;
+        if (!byLine.has(key))
+            byLine.set(key, f);
+    }
+    return [...byLine.values()];
+}
+/** Corpo do comentário: explicação curta + bloco ```suggestion. */
+function suggestionBody(finding) {
+    const code = finding.suggestion ?? '';
+    // Se a linha já tiver ```, a cerca precisa ser maior que qualquer uma dentro.
+    const longest = Math.max(2, ...[...code.matchAll(/`+/g)].map((m) => m[0].length));
+    const fence = '`'.repeat(longest + 1);
+    const docs = finding.docs ? ` · [guia de migração](${finding.docs})` : '';
+    return [
+        `**Bootlift · \`${finding.ruleId}\`**: ${finding.message}.`,
+        '',
+        `${fence}suggestion`,
+        code,
+        fence,
+        '',
+        `<sub>${finding.fix}${docs}</sub>`,
+        SUGGESTION_MARKER
+    ].join('\n');
+}
+/**
+ * Publica as correções como um review no PR, com um comentário de sugestão em
+ * cada linha. O autor aceita uma a uma ("Commit suggestion") ou todas de uma
+ * vez ("Add suggestion to batch").
+ *
+ * Só recebe achados em linhas ADICIONADAS pelo PR (o GitHub não aceita
+ * comentário fora do diff). Sugestões iguais já publicadas em pushes
+ * anteriores são puladas, então o PR não enche de comentários repetidos.
+ */
+async function postSuggestions(octokit, ref, findings) {
+    const candidates = suggestable(findings);
+    if (candidates.length === 0)
+        return { posted: 0, skipped: 0 };
+    const { owner, repo, pull_number } = ref;
+    const existing = await octokit.paginate(octokit.rest.pulls.listReviewComments, { owner, repo, pull_number, per_page: 100 });
+    const already = new Set(existing
+        .filter((c) => c.body?.includes(SUGGESTION_MARKER))
+        .map((c) => `${c.path}\n${c.body}`));
+    const fresh = [];
+    for (const f of candidates) {
+        const body = suggestionBody(f);
+        if (already.has(`${f.file}\n${body}`))
+            continue;
+        fresh.push({ path: f.file, line: f.line, side: 'RIGHT', body });
+    }
+    const skipped = candidates.length - fresh.length;
+    if (fresh.length === 0)
+        return { posted: 0, skipped };
+    const comments = fresh.slice(0, MAX_SUGGESTIONS);
+    const rest = fresh.length - comments.length;
+    await octokit.rest.pulls.createReview({
+        owner,
+        repo,
+        pull_number,
+        ...(ref.commit_id ? { commit_id: ref.commit_id } : {}),
+        event: 'COMMENT',
+        body: reviewBody(comments.length, rest),
+        comments
+    });
+    return { posted: comments.length, skipped };
+}
+function reviewBody(count, rest) {
+    const what = count === 1
+        ? '1 correção pronta para aplicar em 1 clique'
+        : `${count} correções prontas para aplicar em 1 clique`;
+    const more = rest > 0
+        ? ` Mais ${rest} aparecem no próximo push, depois que estas forem aplicadas.`
+        : '';
+    return (`🚀 **Bootlift:** ${what}. Use **Commit suggestion** em cada uma ou ` +
+        `**Add suggestion to batch** para juntar todas num commit só.${more}`);
 }
 
 /**
@@ -34918,6 +35012,7 @@ const MAX_ANNOTATIONS = 50;
  * 3. Decide o que bloqueia (guardrail no diff do PR ou full), publica
  *    anotações, job summary e comentário no PR, define outputs e falha o
  *    job conforme o fail-on (Dia 4).
+ * 4. No guardrail, publica as correções como sugestões de 1 clique (Dia 5).
  */
 async function run() {
     try {
@@ -34954,13 +35049,17 @@ async function run() {
             ? `  guardrail: ${blocking.length} achado(s) em linhas adicionadas por este PR`
             : `  full: ${blocking.length} achado(s) podem reprovar o job`);
         annotate(blocking);
+        // Sugestões só existem no guardrail: o GitHub só aceita comentário de
+        // review em linhas do diff, e `blocking` aqui é exatamente isso.
+        const fixes = guardrail && config.suggestions && octokit ? suggestable(blocking) : [];
         const report = renderReport({
             analysis,
             blocking,
             mode: guardrail ? 'guardrail' : 'full',
             pullRequest: guardrail,
             failOn: config.failOn,
-            link: linkBuilder(pr?.headSha)
+            link: linkBuilder(pr?.headSha),
+            suggestions: fixes.length
         });
         if (process.env.GITHUB_STEP_SUMMARY) {
             await summary.addRaw(report).write();
@@ -34977,6 +35076,19 @@ async function run() {
                 catch (error) {
                     warning(`Não foi possível comentar no PR (PRs de fork têm token somente leitura): ${message(error)}`);
                 }
+            }
+        }
+        if (pr && octokit && fixes.length > 0) {
+            try {
+                const { posted, skipped } = await postSuggestions(octokit, {
+                    ...context.repo,
+                    pull_number: pr.number,
+                    commit_id: pr.headSha
+                }, fixes);
+                info(`  sugestões: ${posted} publicada(s)${skipped ? `, ${skipped} já estavam no PR` : ''}`);
+            }
+            catch (error) {
+                warning(`Não foi possível publicar as sugestões no PR (PRs de fork têm token somente leitura): ${message(error)}`);
             }
         }
         setOutputs(analysis.score, blocking.length, analysis.counts.error);

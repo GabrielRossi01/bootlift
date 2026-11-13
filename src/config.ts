@@ -37,6 +37,7 @@ export function readConfig(getInput: InputReader, eventName?: string): Config {
     mode,
     failOn,
     commentOnPr: parseBoolean('comment-on-pr', getInput('comment-on-pr'), true),
+    suggestions: parseBoolean('suggestions', getInput('suggestions'), true),
     token: getInput('github-token')
   }
 }

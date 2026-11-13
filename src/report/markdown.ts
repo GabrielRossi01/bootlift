@@ -23,6 +23,8 @@ export interface ReportInput {
   failOn: FailOn
   /** Gera o link para arquivo/linha no GitHub; sem ele, o local sai como texto. */
   link?: (finding: Finding) => string | undefined
+  /** Quantas correções viram sugestão de 1 clique neste PR. */
+  suggestions?: number
 }
 
 /** Relatório em Markdown: usado no comentário do PR e no job summary. */
@@ -50,6 +52,13 @@ export function renderReport(input: ReportInput): string {
   } else {
     out.push(
       `🔎 **Modo full:** ${plural(findings.length, 'achado')} no repositório.`,
+      ''
+    )
+  }
+
+  if (guardrail && input.suggestions) {
+    out.push(
+      `💡 ${plural(input.suggestions, 'correção pode', 'correções podem')} ser aplicada${input.suggestions === 1 ? '' : 's'} em 1 clique: veja as sugestões na aba **Files changed**.`,
       ''
     )
   }

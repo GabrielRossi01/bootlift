@@ -2,7 +2,7 @@
  * Testes das regras: um caso que deve disparar e um que não deve, por regra,
  * mais versões, propriedades renomeadas, score e fail-on.
  */
-import { RULES } from '../src/rules/catalog.js'
+import { escapeRegExp, RULES } from '../src/rules/catalog.js'
 import {
   computeScore,
   runRules,
@@ -206,6 +206,13 @@ describe('regras de linha', () => {
     const [finding] = runRules([{ scope: 'java', path: 'A.java', content }])
     expect(finding.line).toBe(3)
     expect(finding.suggestion).toBe('import jakarta.servlet.Filter;')
+  })
+
+  it('escapeRegExp neutraliza todos os caracteres especiais', () => {
+    const tricky = String.raw`a.b*c+d?e^f$g{h}i(j)k|l[m]n\o-p`
+    expect(new RegExp(`^${escapeRegExp(tricky)}$`).test(tricky)).toBe(true)
+    expect(escapeRegExp('web-services')).toBe('web-services')
+    expect(escapeRegExp(String.raw`a\b`)).toBe(String.raw`a\\b`)
   })
 
   it('todas as regras do catálogo compilam e têm mensagem, correção e link', () => {

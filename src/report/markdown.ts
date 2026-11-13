@@ -134,7 +134,15 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-/** Evita que | ou quebras de linha quebrem a tabela do Markdown. */
-function escape(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+/**
+ * Evita que | ou quebras de linha quebrem a tabela do Markdown.
+ *
+ * A barra invertida é escapada primeiro: sem isso, um texto terminado em "\"
+ * viraria "\\|" e o | voltaria a separar colunas.
+ */
+export function escape(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ')
 }

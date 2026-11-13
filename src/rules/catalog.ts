@@ -157,6 +157,11 @@ export const RULES: readonly Rule[] = [
   }
 ]
 
+/** Escapa todos os caracteres especiais de regex (inclusive a barra invertida). */
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function renamedStarter(from: string, to: string): Rule[] {
   return [
     {
@@ -164,7 +169,7 @@ function renamedStarter(from: string, to: string): Rule[] {
       severity: 'warning',
       scope: 'build',
       // (?![\w-]) evita casar spring-boot-starter-webflux, -web-services, -webmvc...
-      pattern: `\\bspring-boot-starter-${from.replace(/-/g, '\\-')}(?![\\w-])`,
+      pattern: `\\bspring-boot-starter-${escapeRegExp(from)}(?![\\w-])`,
       replace: `spring-boot-starter-${to}`,
       message: `spring-boot-starter-${from} foi renomeado no Spring Boot 4`,
       fix: `Use spring-boot-starter-${to}`,

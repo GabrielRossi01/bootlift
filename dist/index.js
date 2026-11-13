@@ -33969,6 +33969,10 @@ const RULES = [
         docs: MIGRATION_GUIDE
     }
 ];
+/** Escapa todos os caracteres especiais de regex (inclusive a barra invertida). */
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function renamedStarter(from, to) {
     return [
         {
@@ -33976,7 +33980,7 @@ function renamedStarter(from, to) {
             severity: 'warning',
             scope: 'build',
             // (?![\w-]) evita casar spring-boot-starter-webflux, -web-services, -webmvc...
-            pattern: `\\bspring-boot-starter-${from.replace(/-/g, '\\-')}(?![\\w-])`,
+            pattern: `\\bspring-boot-starter-${escapeRegExp(from)}(?![\\w-])`,
             replace: `spring-boot-starter-${to}`,
             message: `spring-boot-starter-${from} foi renomeado no Spring Boot 4`,
             fix: `Use spring-boot-starter-${to}`,
@@ -34792,9 +34796,17 @@ function scoreBar(score) {
 function plural(n, one, many = `${one}s`) {
     return `${n} ${n === 1 ? one : many}`;
 }
-/** Evita que | ou quebras de linha quebrem a tabela do Markdown. */
+/**
+ * Evita que | ou quebras de linha quebrem a tabela do Markdown.
+ *
+ * A barra invertida é escapada primeiro: sem isso, um texto terminado em "\"
+ * viraria "\\|" e o | voltaria a separar colunas.
+ */
 function escape(text) {
-    return text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+    return text
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|')
+        .replace(/\r?\n/g, ' ');
 }
 
 /**

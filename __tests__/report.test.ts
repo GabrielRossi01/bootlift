@@ -4,6 +4,7 @@
 import type { Analysis } from '../src/analyze.js'
 import { addedLines, parsePatch, type Octokit } from '../src/report/diff.js'
 import {
+  escape,
   MARKER,
   MAX_ROWS,
   renderReport,
@@ -177,6 +178,33 @@ describe('renderReport', () => {
       failOn: 'error'
     })
     expect(md).toContain('… e mais 5')
+  })
+
+  it('escape protege a tabela de |, barra invertida e quebras de linha', () => {
+    expect(escape('a|b')).toBe(String.raw`a\|b`)
+    // Sem escapar a barra antes, "x\|" viraria "x\\|" e o | separaria colunas.
+    expect(escape(String.raw`x\|y`)).toBe(String.raw`x\\\|y`)
+    expect(escape(String.raw`c:\pasta`)).toBe(String.raw`c:\\pasta`)
+    expect(escape('linha 1\r\nlinha 2')).toBe('linha 1 linha 2')
+  })
+
+  it('a tabela continua com 5 colunas mesmo com \\ e | no texto', () => {
+    const tricky = {
+      ...finding(1),
+      message: String.raw`termina em \|`,
+      fix: 'a | b'
+    }
+    const md = renderReport({
+      analysis: analysis([tricky]),
+      blocking: [tricky],
+      mode: 'full',
+      pullRequest: false,
+      failOn: 'error'
+    })
+    const row = md.split('\n').find((l) => l.includes('termina em'))!
+    // Separadores de coluna = | não precedidos por um número ímpar de \.
+    const separators = row.match(/(?<!\\)(?:\\\\)*\|/g) ?? []
+    expect(separators).toHaveLength(6)
   })
 
   it('scoreBar arredonda para dezenas', () => {

@@ -1,0 +1,93 @@
+name: 🎯 Falso positivo ou negativo
+description:
+  Uma regra apontou algo que está certo, ou deixou passar algo que está errado.
+title: '[Regra] '
+labels:
+  - falso positivo
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a deixar as regras mais precisas! Não precisa mandar
+        o projeto inteiro: a linha e o tipo de arquivo bastam.
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: O que aconteceu?
+      options:
+        - Falso positivo (apontou algo que está certo)
+        - Falso negativo (deixou passar algo que deveria apontar)
+        - Sugestão de 1 clique errada (a correção proposta quebra o código)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regra
+    attributes:
+      label: Regra
+      description:
+        'Aparece no relatório e no título da anotação (Bootlift: REGRA).'
+      options:
+        - BOOT_VERSION
+        - JAVA_BASELINE
+        - GRADLE_VERSION
+        - JAKARTA_NAMESPACE
+        - JACKSON3_NAMESPACE
+        - MOCKBEAN_REMOVED
+        - UNDERTOW_REMOVED
+        - SPOCK_REMOVED
+        - SESSION_REMOVED
+        - STARTER_RENAMED
+        - LAUNCH_SCRIPT
+        - PROPERTY_RENAMED
+        - Não sei / nenhuma regra disparou
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arquivo
+    attributes:
+      label: Tipo de arquivo
+      options:
+        - pom.xml
+        - build.gradle (Groovy)
+        - build.gradle.kts (Kotlin DSL)
+        - libs.versions.toml
+        - gradle-wrapper.properties
+        - application.yml / .yaml
+        - application.properties
+        - Código Java (.java)
+        - Código Kotlin (.kt)
+    validations:
+      required: true
+
+  - type: textarea
+    id: linha
+    attributes:
+      label: Linha (ou trecho) envolvida
+      description:
+        Copie a linha exatamente como está no arquivo, com algumas linhas em
+        volta se ajudar.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que você esperava?
+      placeholder:
+        'Ex.: javax.annotation.Nonnull é do JSR 305 e não migra para jakarta,
+        então não deveria ser apontado.'
+    validations:
+      required: true
+
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do Bootlift
+      description: O que vem depois do @ no seu workflow.
+      placeholder: v1, v1.0.0, main...
+    validations:
+      required: true

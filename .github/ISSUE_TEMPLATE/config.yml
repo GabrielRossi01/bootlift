@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Guia de contribuição
+    url: https://github.com/GabrielRossi01/bootlift/blob/main/CONTRIBUTING.md
+    about: Como preparar o ambiente, criar uma regra e abrir um pull request.
+  - name: 📚 Guia oficial de migração para o Spring Boot 4
+    url: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide
+    about: Dúvidas sobre a migração em si (não sobre o Bootlift).

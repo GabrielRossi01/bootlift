@@ -1,7 +1,7 @@
 name: Bootlift - Spring Boot 4 Readiness Check
 description:
-  Reports how ready a Java project is for Spring Boot 4 and blocks new migration
-  debt in pull requests.
+  Scores Spring Boot 4 readiness, blocks new migration debt in pull requests and
+  suggests one-click fixes.
 author: GabrielRossi01
 
 branding:

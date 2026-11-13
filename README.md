@@ -22,14 +22,13 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 - **Análise estática:** lê `pom.xml`, Gradle (Groovy e Kotlin DSL),
   `application.*` e o código Java/Kotlin, sem compilar e sem JDK no runner.
 
-> [!NOTE]
->
-> **Status: Dia 5 (sugestões de 1 clique).** Regras, score, relatório no PR,
-> guardrail e correções aplicáveis em 1 clique estão prontos. Falta o release
-> v1.0 no Marketplace (Dia 6).
+<p align="center"><img src="./.github/assets/bootlift-updated.gif" alt="Bootlift aplicando as correções sugeridas num pull request" width="800"></p>
 
-<p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
-<p align="center"><img src="./.github/assets/bootlift-updated.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
+<details>
+<summary>▶️ Passo a passo completo: do PR reprovado ao PR aprovado (75 s)</summary>
+<br>
+<p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request, do início ao fim" width="800"></p>
+</details>
 
 Veja funcionando de verdade no
 [bootlift-demo](https://github.com/GabrielRossi01/bootlift-demo/pulls?q=is%3Apr).
@@ -53,6 +52,20 @@ jobs:
         with:
           fail-on: error
 ```
+
+Use `@v1` para receber correções e regras novas da versão 1 automaticamente, ou
+fixe uma versão exata (`@v1.0.0`) se preferir atualizar manualmente.
+
+### Permissões
+
+| Permissão              | Para quê                                                    |
+| ---------------------- | ----------------------------------------------------------- |
+| `contents: read`       | Ler o código do repositório (o `actions/checkout` já pede). |
+| `pull-requests: write` | Ler o diff, comentar no PR e publicar as sugestões.         |
+
+Sem `pull-requests: write`, a action continua funcionando: o relatório vai para
+o job summary, as anotações aparecem nos arquivos e o `fail-on` vale
+normalmente.
 
 ### Inputs
 
@@ -121,7 +134,7 @@ grande, não como 30.
 | `blocking` | Achados que podem reprovar o job no modo atual.          |
 | `errors`   | Achados de severidade `error` no repositório inteiro.    |
 
-## Regras do MVP (v1.0)
+## Regras (v1.0)
 
 | Regra                | O que detecta                                                      | Severidade |
 | -------------------- | ------------------------------------------------------------------ | ---------- |
@@ -141,6 +154,22 @@ grande, não como 30.
 As regras ficam em [`src/rules/catalog.ts`](./src/rules/catalog.ts). A lista de
 propriedades renomeadas vem da receita `spring-boot-40-properties` do
 [OpenRewrite](https://github.com/openrewrite/rewrite-spring) (Apache-2.0).
+
+## Limitações conhecidas
+
+- A análise é **por linha, com expressões regulares**, sem compilar o projeto.
+  Uma anotação ou import quebrado em várias linhas pode passar despercebido.
+- `path` aponta para uma pasta só. Num monorepo com vários serviços, rode a
+  action uma vez por serviço (por exemplo, com `strategy.matrix`).
+- A versão do Gradle vem do `gradle-wrapper.properties`; sem wrapper, a regra
+  `GRADLE_VERSION` não roda.
+- Em YAML aninhado, `PROPERTY_RENAMED` aponta a linha e a chave nova, mas não
+  gera sugestão de 1 clique (só em `.properties` e chaves "achatadas").
+- Sugestões de 1 clique exigem o modo guardrail e um token com escrita, então
+  não aparecem em PRs vindos de fork.
+
+Achou um falso positivo ou uma mudança do Boot 4 que falta? Abra uma
+[issue](https://github.com/GabrielRossi01/bootlift/issues).
 
 ## Desenvolvimento
 
@@ -177,8 +206,8 @@ armadilhas que **não** podem gerar falso positivo. Detalhes em
 
 ## Roadmap
 
-- **v1.0:** guardrail no diff, suggestions de 1 clique, comentário idempotente
-  no PR, 12 regras.
+- **v1.0** ✅ guardrail no diff, sugestões de 1 clique, comentário idempotente
+  no PR, 12 regras. Veja o [CHANGELOG](./CHANGELOG.md).
 - **v1.1:** `mode: autofix` (abre um PR com as correções seguras) e saída SARIF
   para Code Scanning.
 - **v2:** análise por AST, sugestões com IA e painel de prontidão para vários

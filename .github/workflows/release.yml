@@ -1,0 +1,40 @@
+# Move a tag da versão principal (v1, v2...) para cada release publicada.
+#
+# Quem usa `GabrielRossi01/bootlift@v1` recebe a v1.0.1, a v1.1.0 etc. sem
+# trocar nada no workflow. Pré-releases e tags fora do padrão vX.Y.Z são
+# ignoradas.
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  move-major-tag:
+    name: Move major version tag
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.release.prerelease }}
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+
+      - name: Point the major tag at this release
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag $TAG fora do padrão vX.Y.Z, nada a fazer."
+            exit 0
+          fi
+          MAJOR="v${BASH_REMATCH[1]}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$MAJOR" -m "$MAJOR -> $TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$MAJOR" --force
+          echo "::notice::$MAJOR agora aponta para $TAG"

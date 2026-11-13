@@ -171,6 +171,12 @@ propriedades renomeadas vem da receita `spring-boot-40-properties` do
 Achou um falso positivo ou uma mudança do Boot 4 que falta? Abra uma
 [issue](https://github.com/GabrielRossi01/bootlift/issues).
 
+## Contribuindo
+
+Contribuições são bem-vindas, de um relato de falso positivo a uma regra nova. O
+[CONTRIBUTING.md](./CONTRIBUTING.md) explica como preparar o ambiente, criar uma
+regra, escrever os testes e abrir o PR.
+
 ## Desenvolvimento
 
 Requer Node.js 24 (veja `.node-version`).

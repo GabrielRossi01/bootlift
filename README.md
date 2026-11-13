@@ -30,7 +30,7 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 
 
 <p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
-<p align="center"><img src="./.github/assets/bootlift-demo2.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
+<p align="center"><img src="./.github/assets/bootlift-updated.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
 
 Veja funcionando de verdade no
 [bootlift-demo](https://github.com/GabrielRossi01/bootlift-demo/pulls?q=is%3Apr).

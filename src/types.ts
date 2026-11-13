@@ -1,8 +1,9 @@
 /**
  * Tipos compartilhados do Bootlift.
  *
- * As regras vivem em YAML (src/rules/boot4.rules.yml, Dia 3) e são tipadas por
- * `Rule`. Cada ocorrência encontrada no projeto vira um `Finding`.
+ * Cada ocorrência encontrada no projeto vira um `Finding`. As regras por linha
+ * ficam em src/rules/catalog.ts; as de versão e de propriedades têm lógica
+ * própria (src/rules/versions.ts e src/rules/properties.ts).
  */
 
 export type Severity = 'info' | 'warning' | 'error'
@@ -62,16 +63,20 @@ export interface ProjectInfo {
   gradle: VersionRef[]
 }
 
+/** Regra aplicada linha a linha (src/rules/catalog.ts). */
 export interface Rule {
   id: RuleId
   severity: Severity
   scope: Scope
-  /** Regex aplicada linha a linha. */
+  /** Regex aplicada em cada linha (sem flags; comentários já mascarados). */
   pattern: string
   message: string
   fix: string
   docs: string
-  /** Presente = correção determinística (vira suggestion de 1 clique). */
+  /**
+   * Substituição determinística aplicada sobre o trecho encontrado, aceitando
+   * grupos ($1, $2...). Presente = a regra gera uma correção de 1 clique.
+   */
   replace?: string
 }
 
@@ -84,7 +89,7 @@ export interface Finding {
   message: string
   fix: string
   docs?: string
-  /** Linha já corrigida, quando a regra tem `replace`. */
+  /** A linha inteira já corrigida, quando a regra tem `replace`. */
   suggestion?: string
 }
 

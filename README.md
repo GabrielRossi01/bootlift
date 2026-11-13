@@ -24,10 +24,10 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 
 > [!NOTE]
 >
-> **Status: Dia 2 (scanner).** A action já lê o projeto (Maven, Gradle Groovy e
-> Kotlin DSL, version catalog, `application.*` e código Java/Kotlin) e descobre
-> as versões de Spring Boot, Java e Gradle. As regras (Dia 3) e os relatórios no
-> PR (Dias 4 e 5) chegam nos próximos dias.
+> **Status: Dia 4 (regras e relatórios).** As 12 regras rodam, o score sai de 0
+> a 100 e a action publica job summary, anotações nas linhas e um comentário
+> único no PR, além de respeitar o guardrail. As _suggestions_ de 1 clique
+> chegam no Dia 5.
 
 ## Uso
 
@@ -59,6 +59,30 @@ jobs:
 | `comment-on-pr` | `true`                | Publica ou atualiza o comentário com o relatório no PR.                                           |
 | `github-token`  | `${{ github.token }}` | Token para ler o diff do PR e comentar. Em PRs de fork ele é somente leitura e a action só avisa. |
 
+### Modos
+
+- **`guardrail`** (padrão em `pull_request`): o Bootlift lê o diff do PR e só os
+  achados em **linhas adicionadas** contam para o `fail-on`. O legado aparece no
+  relatório, recolhido, e entra no score. Se o diff não puder ser lido, a action
+  avisa e cai para `full`.
+- **`full`** (padrão nos demais eventos): todos os achados contam.
+
+### Relatório
+
+Cada execução gera:
+
+- um **job summary** com score, versões detectadas e tabela de achados;
+- **anotações** (`error`/`warning`/`notice`) nas linhas dos arquivos;
+- um **comentário no PR** (com `comment-on-pr: true`), atualizado a cada push em
+  vez de duplicado. Ele exige `pull-requests: write`.
+
+### Score
+
+Começa em 100. Cada regra encontrada desconta uma vez pelo peso da severidade
+(`error` 15, `warning` 5, `info` 1), mais 1 por ocorrência extra, até 10 a mais
+por regra. O mínimo é 0. Assim, 30 imports `javax.*` pesam como um problema
+grande, não como 30.
+
 ### Outputs
 
 | Output     | Descrição                                                |
@@ -69,20 +93,24 @@ jobs:
 
 ## Regras do MVP (v1.0)
 
-| Regra                | O que detecta                                                       | Severidade |
-| -------------------- | ------------------------------------------------------------------- | ---------- |
-| `BOOT_VERSION`       | Spring Boot abaixo de 3.5 (suba para 3.5.x antes do 4.0)            | warning    |
-| `JAVA_BASELINE`      | Java abaixo de 17                                                   | error      |
-| `GRADLE_VERSION`     | Gradle Wrapper abaixo de 8.14                                       | error      |
-| `JAKARTA_NAMESPACE`  | Imports `javax.servlet`, `javax.persistence` etc.                   | error      |
-| `JACKSON3_NAMESPACE` | `com.fasterxml.jackson` → `tools.jackson` (exceto annotations)      | error      |
-| `MOCKBEAN_REMOVED`   | `@MockBean`/`@SpyBean` → `@MockitoBean`/`@MockitoSpyBean`           | error      |
-| `UNDERTOW_REMOVED`   | Undertow (incompatível com Servlet 6.1)                             | error      |
-| `SPOCK_REMOVED`      | Integração com Spock removida                                       | error      |
-| `SESSION_REMOVED`    | Spring Session Hazelcast/MongoDB fora do Boot                       | error      |
-| `STARTER_RENAMED`    | `web` → `webmvc`, `web-services` → `webservices`, `aop` → `aspectj` | warning    |
-| `LAUNCH_SCRIPT`      | Launch script de jar executável removido                            | warning    |
-| `PROPERTY_RENAMED`   | Propriedades renomeadas em `application.*`                          | warning    |
+| Regra                | O que detecta                                                      | Severidade |
+| -------------------- | ------------------------------------------------------------------ | ---------- |
+| `BOOT_VERSION`       | Spring Boot abaixo de 3.5 (warning) ou 3.5.x ainda não no 4.0      | warning    |
+| `JAVA_BASELINE`      | Java abaixo de 17                                                  | error      |
+| `GRADLE_VERSION`     | Gradle Wrapper abaixo de 8.14                                      | error      |
+| `JAKARTA_NAMESPACE`  | Imports `javax.servlet`, `javax.persistence` etc.                  | error      |
+| `JACKSON3_NAMESPACE` | `com.fasterxml.jackson` → `tools.jackson` (exceto annotations)     | error      |
+| `MOCKBEAN_REMOVED`   | `@MockBean`/`@SpyBean` → `@MockitoBean`/`@MockitoSpyBean`          | error      |
+| `UNDERTOW_REMOVED`   | Undertow (incompatível com Servlet 6.1)                            | error      |
+| `SPOCK_REMOVED`      | Integração com Spock removida (volta no 4.1)                       | warning    |
+| `SESSION_REMOVED`    | Spring Session Hazelcast/MongoDB fora do Boot                      | error      |
+| `STARTER_RENAMED`    | `web` → `webmvc`, `aop` → `aspectj`, `oauth2-*` e outros           | warning    |
+| `LAUNCH_SCRIPT`      | Launch script de jar executável removido                           | warning    |
+| `PROPERTY_RENAMED`   | 96 propriedades renomeadas em `application.*` (YAML e .properties) | warning    |
+
+As regras ficam em [`src/rules/catalog.ts`](./src/rules/catalog.ts). A lista de
+propriedades renomeadas vem da receita `spring-boot-40-properties` do
+[OpenRewrite](https://github.com/openrewrite/rewrite-spring) (Apache-2.0).
 
 ## Desenvolvimento
 

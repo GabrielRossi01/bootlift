@@ -51,10 +51,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture:
-          - maven-boot3
-          - gradle-kts-boot3
-          - boot4-ready
+        include:
+          - fixture: maven-boot3
+            ready: false
+          - fixture: gradle-kts-boot3
+            ready: false
+          - fixture: boot4-ready
+            ready: true
 
     steps:
       - name: Checkout
@@ -66,7 +69,47 @@ jobs:
         uses: ./
         with:
           path: __fixtures__/projects/${{ matrix.fixture }}
+          mode: full
+          fail-on: none
           comment-on-pr: false
+
+      - name: Check outputs
+        env:
+          SCORE: ${{ steps.bootlift.outputs.score }}
+          ERRORS: ${{ steps.bootlift.outputs.errors }}
+          READY: ${{ matrix.ready }}
+        run: |
+          echo "score=$SCORE errors=$ERRORS"
+          if [ "$READY" = "true" ]; then
+            [ "$SCORE" = "100" ] && [ "$ERRORS" = "0" ] || { echo "boot4-ready deveria ter score 100 e 0 erros"; exit 1; }
+          else
+            [ "$SCORE" -lt 100 ] && [ "$ERRORS" -gt 0 ] || { echo "Projeto Boot 3 deveria ter score < 100 e erros"; exit 1; }
+          fi
+
+  test-fail-on:
+    name: Dogfood (fail-on error fails)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+
+      - name: Run Bootlift on a Boot 3 project
+        id: bootlift
+        continue-on-error: true
+        uses: ./
+        with:
+          path: __fixtures__/projects/maven-boot3
+          mode: full
+          fail-on: error
+          comment-on-pr: false
+
+      - name: Expect the previous step to fail
+        if: ${{ steps.bootlift.outcome != 'failure' }}
+        run: |
+          echo "Bootlift should fail with fail-on: error on a Boot 3 project."
+          exit 1
 
   test-invalid-input:
     name: Dogfood (invalid input fails)

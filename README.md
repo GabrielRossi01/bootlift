@@ -28,10 +28,9 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 > guardrail e correções aplicáveis em 1 clique estão prontos. Falta o release
 > v1.0 no Marketplace (Dia 6).
 
-<!-- GIF da demo: grave seguindo o passo a passo do Dia 5, salve em
-.github/assets/bootlift-demo.gif e descomente a linha abaixo.
+
 <p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
--->
+<p align="center"><img src="./.github/assets/bootlift-demo2.gif" alt="Bootlift sugerindo correções num pull request" width="800"></p>
 
 Veja funcionando de verdade no
 [bootlift-demo](https://github.com/GabrielRossi01/bootlift-demo/pulls?q=is%3Apr).

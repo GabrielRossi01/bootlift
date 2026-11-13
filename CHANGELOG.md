@@ -4,6 +4,24 @@ Todas as mudanças relevantes do Bootlift. O formato segue o
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões seguem
 o [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.0.1] - 2026-11-13
+
+### Corrigido
+
+- O relatório escapa a barra invertida (`\`) antes do `|`. Antes, um nome de
+  arquivo ou texto com `\|` quebrava as colunas da tabela no comentário do PR e
+  no job summary.
+- Os padrões das regras de starters renomeados escapam todos os caracteres
+  especiais de regex, não só o `-` (nova função `escapeRegExp`).
+
+Os dois itens resolvem os alertas `js/incomplete-sanitization` do CodeQL.
+
+### Documentação
+
+- Guia de contribuição ([CONTRIBUTING.md](./CONTRIBUTING.md)).
+- Formulários de issue (falso positivo, regra nova e bug) e template de pull
+  request.
+
 ## [1.0.0] - 2026-11-13
 
 Primeira versão pública, no GitHub Marketplace.
@@ -29,4 +47,5 @@ Primeira versão pública, no GitHub Marketplace.
 - Inputs `path`, `mode`, `fail-on`, `comment-on-pr`, `suggestions` e
   `github-token`; outputs `score`, `blocking` e `errors`.
 
+[1.0.1]: https://github.com/GabrielRossi01/bootlift/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/GabrielRossi01/bootlift/releases/tag/v1.0.0

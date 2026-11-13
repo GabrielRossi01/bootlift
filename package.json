@@ -1,7 +1,7 @@
 {
   "name": "bootlift",
   "description": "GitHub Action que mede a prontidão de um projeto para o Spring Boot 4 e age no PR",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Gabriel Oliveira Rossi (GabrielRossi01)",
   "type": "module",
   "private": true,

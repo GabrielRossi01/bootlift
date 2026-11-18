@@ -22,13 +22,13 @@ GitHub Action que mede o quanto um projeto Java está pronto para o **Spring Boo
 - **Análise estática:** lê `pom.xml`, Gradle (Groovy e Kotlin DSL),
   `application.*` e o código Java/Kotlin, sem compilar e sem JDK no runner.
 
-<p align="center"><img src="./.github/assets/bootlift-updated.gif" alt="Bootlift aplicando as correções sugeridas num pull request" width="800"></p>
-
-<details>
-<summary>▶️ Passo a passo completo: do PR reprovado ao PR aprovado (75 s)</summary>
-<br>
-<p align="center"><img src="./.github/assets/bootlift-demo.gif" alt="Bootlift sugerindo correções num pull request, do início ao fim" width="800"></p>
-</details>
+<p align="center">
+  <a href="./.github/assets/bootlift.mp4">
+    <img src="./.github/assets/bootlift-poster.jpg" alt="Vídeo de apresentação do Bootlift (clique para assistir)" width="800">
+  </a>
+  <br>
+  <sub>▶️ Clique na imagem para assistir ao vídeo de apresentação.</sub>
+</p>
 
 Veja funcionando de verdade no
 [bootlift-demo](https://github.com/GabrielRossi01/bootlift-demo/pulls?q=is%3Apr).
